@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: logs-dashboard
+  labels:
+    app.kubernetes.io/name: logs-dashboard-backend
+    app.kubernetes.io/component: backend
+data:
+  APP_NAME: "Logs Dashboard API"
+  APP_VERSION: "1.0.0"
+  DEBUG: "false"
+  LOG_LEVEL: "INFO"
+  DEFAULT_PAGE_SIZE: "20"
+  MAX_PAGE_SIZE: "100"
+  # CORS_ORIGINS will be set based on your ingress/service configuration
+  CORS_ORIGINS: "http://localhost:3000,https://logs-dashboard.example.com"

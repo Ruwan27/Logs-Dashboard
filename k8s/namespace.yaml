@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: logs-dashboard
+  labels:
+    app.kubernetes.io/name: logs-dashboard
+    app.kubernetes.io/part-of: logs-dashboard

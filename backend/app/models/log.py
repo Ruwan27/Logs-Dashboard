@@ -52,6 +52,12 @@ class Log(Base):
         nullable=False,
         index=True
     )
+
+    details = Column(
+        String(1024),
+        nullable=True,
+        default=None
+    )
     
     # Audit fields
     created_at = Column(

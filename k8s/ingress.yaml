@@ -1,0 +1,55 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: logs-dashboard-ingress
+  namespace: logs-dashboard
+  labels:
+    app.kubernetes.io/name: logs-dashboard
+    app.kubernetes.io/component: ingress
+  annotations:
+    # For NGINX Ingress Controller
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Enable CORS at ingress level (optional)
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    # For TLS/HTTPS (uncomment and configure cert-manager)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  # TLS configuration (uncomment for HTTPS)
+  # tls:
+  #   - hosts:
+  #       - api.logs-dashboard.example.com
+  #     secretName: logs-dashboard-tls
+  rules:
+    - host: api.logs-dashboard.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-service
+                port:
+                  number: 8000
+---
+# Alternative: LoadBalancer Service (for cloud providers without Ingress)
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-loadbalancer
+  namespace: logs-dashboard
+  labels:
+    app.kubernetes.io/name: logs-dashboard-backend
+    app.kubernetes.io/component: backend
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: backend
