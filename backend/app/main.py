@@ -6,7 +6,18 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.core.logging_config import logger
 from app.routers import logs, analytics, health
+import time
+from sqlalchemy.exc import OperationalError
+retries = 10
 
+for i in range(retries):
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("Database connected")
+        break
+    except OperationalError:
+        print("Waiting for PostgreSQL...")
+        time.sleep(5)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
