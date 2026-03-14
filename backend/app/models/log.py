@@ -1,7 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, DateTime, Index, Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Text, DateTime, Index, Enum as SQLEnum, Uuid
 import enum
 
 from app.core.database import Base
@@ -21,7 +20,7 @@ class Log(Base):
     
     # Primary key
     id = Column(
-        UUID(as_uuid=True),
+        Uuid,
         primary_key=True,
         default=uuid.uuid4,
         nullable=False
