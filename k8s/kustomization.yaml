@@ -10,6 +10,7 @@ resources:
   - postgres-pvc.yaml
   - postgres-deployment.yaml
   - backend-deployment.yaml
+  - frontend-deployment.yaml
   # Uncomment based on your needs:
   # - ingress.yaml
   # - hpa.yaml
