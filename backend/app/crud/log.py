@@ -163,11 +163,19 @@ class LogCRUD:
         if source:
             query = query.filter(Log.source.ilike(f"%{source}%"))
         
-        # Group by time period
-        if granularity == "hour":
-            period_expr = func.date_trunc('hour', Log.timestamp)
+        # Group by time period - use dialect-appropriate function
+        dialect_name = db.bind.dialect.name
+        
+        if dialect_name == "sqlite":
+            if granularity == "hour":
+                period_expr = func.strftime('%Y-%m-%d %H:00', Log.timestamp)
+            else:
+                period_expr = func.strftime('%Y-%m-%d', Log.timestamp)
         else:
-            period_expr = func.date_trunc('day', Log.timestamp)
+            if granularity == "hour":
+                period_expr = func.date_trunc('hour', Log.timestamp)
+            else:
+                period_expr = func.date_trunc('day', Log.timestamp)
         
         results = (
             query
@@ -182,7 +190,7 @@ class LogCRUD:
         
         return [
             {
-                "period": result.period.strftime("%Y-%m-%d %H:%M" if granularity == "hour" else "%Y-%m-%d"),
+                "period": result.period if isinstance(result.period, str) else result.period.strftime("%Y-%m-%d %H:%M" if granularity == "hour" else "%Y-%m-%d"),
                 "count": result.count
             }
             for result in results
