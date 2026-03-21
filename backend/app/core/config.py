@@ -4,11 +4,13 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
     
     # Application
     APP_NAME: str = "Logs Dashboard API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    TESTING: bool = False
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@db:5432/logs_dashboard"

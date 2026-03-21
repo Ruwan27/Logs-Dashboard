@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from uuid import uuid4
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
@@ -19,6 +19,23 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+
+def _sqlite_date_trunc(granularity, timestamp):
+    """SQLite polyfill for PostgreSQL date_trunc()."""
+    if timestamp is None:
+        return None
+    fmt = "%Y-%m-%d 00:00:00" if granularity == "day" else "%Y-%m-%d %H:00:00"
+    if isinstance(timestamp, str):
+        dt = datetime.fromisoformat(timestamp)
+    else:
+        dt = timestamp
+    return dt.strftime(fmt)
+
+
+@event.listens_for(engine, "connect")
+def _register_sqlite_functions(dbapi_conn, connection_record):
+    dbapi_conn.create_function("date_trunc", 2, _sqlite_date_trunc)
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -49,10 +66,10 @@ def client(db_session):
     """Create a test client with database override."""
     app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=engine)
-    
+
     with TestClient(app) as test_client:
         yield test_client
-    
+
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
 

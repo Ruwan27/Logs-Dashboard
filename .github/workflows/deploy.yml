@@ -1,0 +1,82 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI - Test & Lint"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: self-hosted
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > .env << 'EOF'
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          DEBUG=false
+          LOG_LEVEL=INFO
+          CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+          NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+          EOF
+
+      - name: Stop existing containers
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml down --timeout 30
+        continue-on-error: true
+
+      - name: Build and start containers
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --force-recreate
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for backend to be healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Backend is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/30 - waiting 10s..."
+            sleep 10
+          done
+          echo "ERROR: Backend failed to become healthy"
+          docker compose logs backend
+          exit 1
+
+      - name: Run database migrations
+        run: docker compose exec -T backend alembic upgrade head
+
+      - name: Verify all services
+        run: |
+          echo "=== Checking containers ==="
+          docker compose ps
+
+          echo ""
+          echo "=== Backend health ==="
+          curl -sf http://localhost:8000/health | python -m json.tool || echo "Backend health check failed"
+
+          echo ""
+          echo "=== Frontend check ==="
+          curl -sf -o /dev/null -w "Frontend HTTP status: %{http_code}\n" http://localhost:3000 || echo "Frontend check failed"
+
+      - name: Cleanup old Docker resources
+        run: docker system prune -f --volumes=false
+        continue-on-error: true
+
+  notify-failure:
+    name: Notify on CI Failure
+    runs-on: self-hosted
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: CI Failed - Skip Deploy
+        run: |
+          echo "::warning::CI workflow failed on main branch. Deployment skipped."
+          echo "Check the CI workflow run: ${{ github.event.workflow_run.html_url }}"

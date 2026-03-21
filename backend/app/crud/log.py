@@ -1,7 +1,8 @@
-from datetime import datetime, timezone
-from typing import Optional, List, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional, Tuple
 from uuid import UUID
-from sqlalchemy import func, desc, asc, extract, cast, Date, String
+
+from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 
 from app.models.log import Log
@@ -163,19 +164,11 @@ class LogCRUD:
         if source:
             query = query.filter(Log.source.ilike(f"%{source}%"))
         
-        # Group by time period - use dialect-appropriate function
-        dialect_name = db.bind.dialect.name
-        
-        if dialect_name == "sqlite":
-            if granularity == "hour":
-                period_expr = func.strftime('%Y-%m-%d %H:00', Log.timestamp)
-            else:
-                period_expr = func.strftime('%Y-%m-%d', Log.timestamp)
+        # Group by time period
+        if granularity == "hour":
+            period_expr = func.date_trunc('hour', Log.timestamp)
         else:
-            if granularity == "hour":
-                period_expr = func.date_trunc('hour', Log.timestamp)
-            else:
-                period_expr = func.date_trunc('day', Log.timestamp)
+            period_expr = func.date_trunc('day', Log.timestamp)
         
         results = (
             query
@@ -188,9 +181,10 @@ class LogCRUD:
             .all()
         )
         
+        fmt = "%Y-%m-%d %H:%M" if granularity == "hour" else "%Y-%m-%d"
         return [
             {
-                "period": result.period if isinstance(result.period, str) else result.period.strftime("%Y-%m-%d %H:%M" if granularity == "hour" else "%Y-%m-%d"),
+                "period": result.period if isinstance(result.period, str) else result.period.strftime(fmt),
                 "count": result.count
             }
             for result in results
@@ -251,7 +245,7 @@ class LogCRUD:
         severity: Optional[SeverityLevel] = None,
         source: Optional[str] = None
     ) -> List[Log]:
-        
+       
         query = db.query(Log)
         
         if start_date:
@@ -267,6 +261,90 @@ class LogCRUD:
             query = query.filter(Log.source.ilike(f"%{source}%"))
         
         return query.order_by(desc(Log.timestamp)).all()
+
+    @staticmethod
+    def get_summary(
+        db: Session,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        source: Optional[str] = None,
+    ) -> dict:
+        
+        query = db.query(Log)
+
+        if start_date:
+            query = query.filter(Log.timestamp >= start_date)
+
+        if end_date:
+            query = query.filter(Log.timestamp <= end_date)
+
+        if source:
+            query = query.filter(Log.source.ilike(f"%{source}%"))
+
+        total_logs = query.count()
+        logs_last_24_hours = query.filter(
+            Log.timestamp >= datetime.now(timezone.utc) - timedelta(hours=24)
+        ).count()
+        error_count = query.filter(Log.severity == SeverityLevel.ERROR.value).count()
+        warning_count = query.filter(Log.severity == SeverityLevel.WARN.value).count()
+        unique_sources = query.with_entities(func.count(func.distinct(Log.source))).scalar() or 0
+
+        error_rate = round((error_count / total_logs) * 100, 2) if total_logs else 0.0
+
+        return {
+            "total_logs": total_logs,
+            "logs_last_24_hours": logs_last_24_hours,
+            "error_count": error_count,
+            "warning_count": warning_count,
+            "unique_sources": unique_sources,
+            "error_rate": error_rate,
+        }
+
+    @staticmethod
+    def get_top_sources(
+        db: Session,
+        limit: int = 5,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        severity: Optional[SeverityLevel] = None,
+    ) -> Tuple[List[dict], int]:
+        """
+        Get the most active log sources.
+        """
+        query = db.query(Log)
+
+        if start_date:
+            query = query.filter(Log.timestamp >= start_date)
+
+        if end_date:
+            query = query.filter(Log.timestamp <= end_date)
+
+        if severity:
+            query = query.filter(Log.severity == severity.value)
+
+        total = query.count()
+        if total == 0:
+            return [], 0
+
+        results = (
+            query.with_entities(
+                Log.source.label("source"),
+                func.count(Log.id).label("count"),
+            )
+            .group_by(Log.source)
+            .order_by(desc("count"), Log.source.asc())
+            .limit(limit)
+            .all()
+        )
+
+        return [
+            {
+                "source": result.source,
+                "count": result.count,
+                "percentage": round((result.count / total) * 100, 2),
+            }
+            for result in results
+        ], total
 
 
 # Singleton instance
