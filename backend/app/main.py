@@ -7,10 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.core.database import engine, Base, SessionLocal
+from app.core.database import engine, Base
 from app.core.logging_config import logger
-from app.crud.user import user_crud
-from app.routers import analytics, health, logs, saved_searches, users
+from app.routers import analytics, health, logs
 
 MAX_DB_RETRIES = 10
 DB_RETRY_INTERVAL = 5  # seconds
@@ -54,17 +53,6 @@ async def lifespan(app: FastAPI):
             logger.error("Failed to create database tables: %s", str(e))
             raise
 
-        # Ensure default guest user exists
-        db = SessionLocal()
-        try:
-            user_crud.get_or_create_default_guest(db)
-            logger.info("Default guest user ready")
-        except Exception as e:
-            logger.error("Failed to create default guest user: %s", str(e))
-            raise
-        finally:
-            db.close()
-    
     yield
     
     logger.info("Shutting down Logs Dashboard API...")
@@ -111,8 +99,6 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(logs.router)
 app.include_router(analytics.router)
-app.include_router(saved_searches.router)
-app.include_router(users.router)
 
 
 @app.get("/", tags=["root"])

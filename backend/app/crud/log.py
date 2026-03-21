@@ -1,6 +1,3 @@
-"""
-CRUD operations for Log model.
-"""
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
@@ -17,16 +14,7 @@ class LogCRUD:
     
     @staticmethod
     def create(db: Session, log_data: LogCreate) -> Log:
-        """
-        Create a new log entry.
         
-        Args:
-            db: Database session
-            log_data: Log creation data
-            
-        Returns:
-            Created log entry
-        """
         db_log = Log(
             message=log_data.message,
             severity=log_data.severity.value,
@@ -40,16 +28,7 @@ class LogCRUD:
     
     @staticmethod
     def get_by_id(db: Session, log_id: UUID) -> Optional[Log]:
-        """
-        Get a log entry by ID.
         
-        Args:
-            db: Database session
-            log_id: Log UUID
-            
-        Returns:
-            Log entry if found, None otherwise
-        """
         return db.query(Log).filter(Log.id == log_id).first()
     
     @staticmethod
@@ -60,19 +39,7 @@ class LogCRUD:
         sort_by: str = "timestamp",
         sort_order: str = "desc"
     ) -> Tuple[List[Log], int]:
-        """
-        Get paginated list of logs.
         
-        Args:
-            db: Database session
-            page: Page number (1-indexed)
-            page_size: Number of items per page
-            sort_by: Field to sort by
-            sort_order: 'asc' or 'desc'
-            
-        Returns:
-            Tuple of (logs list, total count)
-        """
         query = db.query(Log)
         
         # Get total count
@@ -93,17 +60,7 @@ class LogCRUD:
     
     @staticmethod
     def update(db: Session, log_id: UUID, log_data: LogUpdate) -> Optional[Log]:
-        """
-        Update a log entry.
         
-        Args:
-            db: Database session
-            log_id: Log UUID
-            log_data: Update data
-            
-        Returns:
-            Updated log entry if found, None otherwise
-        """
         db_log = db.query(Log).filter(Log.id == log_id).first()
         
         if not db_log:
@@ -124,16 +81,7 @@ class LogCRUD:
     
     @staticmethod
     def delete(db: Session, log_id: UUID) -> bool:
-        """
-        Delete a log entry.
         
-        Args:
-            db: Database session
-            log_id: Log UUID
-            
-        Returns:
-            True if deleted, False if not found
-        """
         db_log = db.query(Log).filter(Log.id == log_id).first()
         
         if not db_log:
@@ -156,24 +104,7 @@ class LogCRUD:
         sort_by: str = "timestamp",
         sort_order: str = "desc"
     ) -> Tuple[List[Log], int]:
-        """
-        Search logs with filters.
         
-        Args:
-            db: Database session
-            start_date: Filter from this date
-            end_date: Filter until this date
-            severity: Filter by severity
-            source: Filter by source (partial match)
-            message: Search in message content
-            page: Page number
-            page_size: Items per page
-            sort_by: Sort field
-            sort_order: Sort order
-            
-        Returns:
-            Tuple of (logs list, total count)
-        """
         query = db.query(Log)
         
         # Apply filters
@@ -217,20 +148,7 @@ class LogCRUD:
         severity: Optional[SeverityLevel] = None,
         source: Optional[str] = None
     ) -> List[dict]:
-        """
-        Get log count aggregated by time period.
         
-        Args:
-            db: Database session
-            granularity: 'hour' or 'day'
-            start_date: Filter from this date
-            end_date: Filter until this date
-            severity: Filter by severity
-            source: Filter by source
-            
-        Returns:
-            List of dicts with period and count
-        """
         query = db.query(Log)
         
         # Apply filters
@@ -279,18 +197,7 @@ class LogCRUD:
         end_date: Optional[datetime] = None,
         source: Optional[str] = None
     ) -> List[dict]:
-        """
-        Get distribution of logs by severity.
         
-        Args:
-            db: Database session
-            start_date: Filter from this date
-            end_date: Filter until this date
-            source: Filter by source
-            
-        Returns:
-            List of dicts with severity, count, and percentage
-        """
         query = db.query(Log)
         
         # Apply filters
@@ -338,19 +245,7 @@ class LogCRUD:
         severity: Optional[SeverityLevel] = None,
         source: Optional[str] = None
     ) -> List[Log]:
-        """
-        Get all logs matching filters for export.
-        
-        Args:
-            db: Database session
-            start_date: Filter from this date
-            end_date: Filter until this date
-            severity: Filter by severity
-            source: Filter by source
-            
-        Returns:
-            List of all matching logs
-        """
+       
         query = db.query(Log)
         
         if start_date:
@@ -374,9 +269,7 @@ class LogCRUD:
         end_date: Optional[datetime] = None,
         source: Optional[str] = None,
     ) -> dict:
-        """
-        Get top-level summary metrics for dashboard cards.
-        """
+        
         query = db.query(Log)
 
         if start_date:

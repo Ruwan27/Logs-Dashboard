@@ -61,21 +61,17 @@ def db_session():
         Base.metadata.drop_all(bind=engine)
 
 
-# @pytest.fixture(scope="function")
-# def client(db_session):
-#     """Create a test client with database override."""
-#     app.dependency_overrides[get_db] = override_get_db
-#     Base.metadata.create_all(bind=engine)
+@pytest.fixture(scope="function")
+def client(db_session):
+    """Create a test client with database override."""
+    app.dependency_overrides[get_db] = override_get_db
+    Base.metadata.create_all(bind=engine)
 
-#     # Seed default guest user for tests
-    
-#     db_session.commit()
-    
-#     with TestClient(app) as test_client:
-#         yield test_client
-    
-#     app.dependency_overrides.clear()
-#     Base.metadata.drop_all(bind=engine)
+    with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
