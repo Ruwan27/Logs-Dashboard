@@ -1,5 +1,5 @@
 # Self-Hosted Runner Setup Guide (Ubuntu)
-
+Please note that this is my Ubuntu machine. If you are using Windows or macOS, only change the self-hosted runner part. If you go to GitHub and select a new hosted runner for macOS or Windows, follow the instructions below for macOS or Windows.
 ## Prerequisites
 
 - **Git** — `git --version`
